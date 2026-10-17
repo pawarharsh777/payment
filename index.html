@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayPulse - Modern Secure Checkout Portal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Lucide Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* CSS Card Flip Animation */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+        .transform-style-3d {
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+        }
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+            transform: rotateY(180deg);
+        }
+        .flipped {
+            transform: rotateY(180deg);
+        }
+
+        /* Glassmorphism Styles */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Printable Receipt Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-receipt, #printable-receipt * {
+                visibility: visible;
+            }
+            #printable-receipt {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                box-shadow: none;
+                background: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-300 font-sans antialiased">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent">PayPulse</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex items-center text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1.5 rounded-full">
+                    <i data-lucide="lock" class="w-3.5 h-3.5 mr-1.5"></i> 256-Bit SSL Encrypted
+                </div>
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle" class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Toggle Theme">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Column: Payment Methods & Details (7 cols) -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- Payment Method Selection Tabs -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700/60 shadow-sm">
+                    <nav class="grid grid-cols-4 gap-1 text-center font-medium text-xs sm:text-sm" aria-label="Payment Tabs">
+                        <button onclick="switchTab('card')" id="tab-btn-card" class="payment-tab active py-3 px-2 sm:px-4 rounded-xl flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all bg-brand-600 text-white shadow-md">
+                            <i data-lucide="credit-card" class="w-4 h-4"></i>
+                            <span>Card</span>
+                        </button>
+                        <button onclick="switchTab('upi')" id="tab-btn-upi" class="payment-tab py-3 px-2 sm:px-4 rounded-xl flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                            <i data-lucide="qr-code" class="w-4 h-4"></i>
+                            <span>UPI / QR</span>
+                        </button>
+                        <button onclick="switchTab('netbanking')" id="tab-btn-netbanking" class="payment-tab py-3 px-2 sm:px-4 rounded-xl flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                            <i data-lucide="building-2" class="w-4 h-4"></i>
+                            <span>Net Banking</span>
+                        </button>
+                        <button onclick="switchTab('wallets')" id="tab-btn-wallets" class="payment-tab py-3 px-2 sm:px-4 rounded-xl flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 transition-all text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50">
+                            <i data-lucide="wallet" class="w-4 h-4"></i>
+                            <span>Wallets</span>
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Express Checkout Section -->
+                <div class="bg-white dark:bg-slate-800/80 rounded-2xl p-6 border border-slate-200 dark:border-slate-700/60 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Express Fast Checkout</p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button onclick="quickPay('Apple Pay')" class="py-2.5 px-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-400 dark:hover:border-slate-500 transition flex items-center justify-center bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm">
+                            <i class="fa-brands fa-apple text-lg mr-1.5"></i> Pay
+                        </button>
+                        <button onclick="quickPay('Google Pay')" class="py-2.5 px-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-400 dark:hover:border-slate-500 transition flex items-center justify-center bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 shadow-sm">
+                            <i class="fa-brands fa-google text-lg mr-1.5 text-blue-500"></i> Pay
+                        </button>
+                        <button onclick="quickPay('Paytm')" class="py-2.5 px-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-400 dark:hover:border-slate-500 transition flex items-center justify-center bg-sky-500 text-white shadow-sm font-bold text-sm">
+                            Paytm
+                        </button>
+                        <button onclick="quickPay('PhonePe')" class="py-2.5 px-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-400 dark:hover:border-slate-500 transition flex items-center justify-center bg-purple-600 text-white shadow-sm font-bold text-sm">
+                            PhonePe
+                        </button>
+                    </div>
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-700"></div></div>
+                        <div class="relative flex justify-center text-xs uppercase"><span class="bg-white dark:bg-slate-800 px-3 text-slate-400">Or pay with card details</span></div>
+                    </div>
+                </div>
+
+                <!-- TAB 1: CREDIT / DEBIT CARD PANEL -->
+                <div id="panel-card" class="tab-panel space-y-6">
+                    
+                    <!-- 3D Card Visualizer -->
+                    <div class="w-full h-56 sm:h-60 perspective-1000 max-w-md mx-auto">
+                        <div id="card-inner" class="w-full h-full transform-style-3d relative rounded-2xl shadow-2xl transition-transform duration-500">
+                            
+                            <!-- Front Card Face -->
+                            <div class="absolute inset-0 w-full h-full rounded-2xl p-6 text-white backface-hidden bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 border border-slate-700/50 flex flex-col justify-between overflow-hidden">
+                                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-brand-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                                <div class="absolute -left-10 -top-10 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                                
+                                <div class="flex justify-between items-center z-10">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-10 h-7 bg-amber-400/80 rounded-md border border-amber-300/50 flex items-center justify-center overflow-hidden relative">
+                                            <div class="w-full h-px bg-amber-600/60 absolute top-2"></div>
+                                            <div class="w-full h-px bg-amber-600/60 absolute bottom-2"></div>
+                                            <div class="h-full w-px bg-amber-600/60 absolute left-3"></div>
+                                        </div>
+                                        <i data-lucide="wifi" class="w-5 h-5 text-slate-400 rotate-90"></i>
+                                    </div>
+                                    <div id="card-brand-logo" class="text-2xl font-bold italic tracking-wider">
+                                        <i class="fa-solid fa-credit-card"></i>
+                                    </div>
+                                </div>
+
+                                <div class="z-10 my-auto">
+                                    <p class="text-xs text-slate-400 uppercase tracking-widest mb-1">Card Number</p>
+                                    <p id="card-num-display" class="font-mono text-xl sm:text-2xl tracking-widest text-slate-100">•••• •••• •••• ••••</p>
+                                </div>
+
+                                <div class="flex justify-between items-end z-10">
+                                    <div>
+                                        <p class="text-[10px] text-slate-400 uppercase tracking-wider">Card Holder</p>
+                                        <p id="card-holder-display" class="font-medium text-sm tracking-wide uppercase truncate max-w-[180px]">YOUR NAME</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-slate-400 uppercase tracking-wider text-right">Expires</p>
+                                        <p id="card-exp-display" class="font-mono text-sm tracking-wider">MM/YY</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Back Card Face -->
+                            <div class="absolute inset-0 w-full h-full rounded-2xl py-6 text-white backface-hidden rotate-y-180 bg-gradient-to-tr from-slate-900 via-slate-800 to-indigo-950 border border-slate-700/50 flex flex-col justify-between">
+                                <div class="w-full h-11 bg-slate-950 mt-2"></div>
+                                <div class="px-6">
+                                    <div class="text-right text-[10px] text-slate-400 uppercase mb-1">CVV / CVC</div>
+                                    <div class="w-full bg-slate-200 h-10 rounded text-slate-900 font-mono font-bold flex items-center justify-end px-4 text-lg tracking-widest">
+                                        <span id="card-cvv-display">•••</span>
+                                    </div>
+                                    <p class="text-[9px] text-slate-400 mt-2 text-center">This card is property of Issuer Bank. Authorized signature required.</p>
+                                </div>
+                                <div class="px-6 flex justify-between items-center text-xs text-slate-400">
+                                    <span>24/7 Support</span>
+                                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Card Details Input Form -->
+                    <form id="card-form" class="space-y-4 bg-white dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm" onsubmit="event.preventDefault(); initiatePayment('Credit/Debit Card');">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Card Holder Name</label>
+                            <div class="relative">
+                                <input type="text" id="card-name-input" required placeholder="John Doe" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none text-sm transition">
+                                <i data-lucide="user" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Card Number</label>
+                            <div class="relative">
+                                <input type="text" id="card-num-input" maxlength="19" required placeholder="4532 0123 4567 8910" class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none text-sm font-mono transition">
+                                <i data-lucide="credit-card" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                                <span id="card-validation-icon" class="absolute right-3.5 top-3"></span>
+                            </div>
+                            <p id="card-error-msg" class="text-xs text-red-500 mt-1 hidden"></p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Expiry Date</label>
+                                <div class="relative">
+                                    <input type="text" id="card-exp-input" maxlength="5" placeholder="MM/YY" required class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none text-sm font-mono transition">
+                                    <i data-lucide="calendar" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">CVV Code</label>
+                                <div class="relative">
+                                    <input type="password" id="card-cvv-input" maxlength="4" required placeholder="123" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none text-sm font-mono transition">
+                                    <i data-lucide="lock" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold shadow-lg shadow-brand-500/30 transition flex items-center justify-center space-x-2">
+                                <span>Pay <span class="pay-amount-btn">$249.99</span></span>
+                                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- TAB 2: UPI / QR PANEL -->
+                <div id="panel-upi" class="tab-panel hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm text-center">
+                        <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">Scan QR Code with any UPI App</h3>
+                        <p class="text-xs text-slate-500 mb-4">Google Pay, PhonePe, Paytm, BHIM or Mobile Banking App</p>
+
+                        <!-- Dynamic QR Code Container -->
+                        <div class="inline-block p-4 bg-white rounded-2xl shadow-md border border-slate-100 relative group">
+                            <div id="qr-code-box" class="w-48 h-48 flex items-center justify-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                                <!-- Dynamic SVG QR Code Simulation -->
+                                <svg class="w-40 h-40 text-slate-800" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM19 19h2v2h-2z"/>
+                                    <path d="M5 5h2v2H5zM17 5h2v2h-2zM5 17h2v2H5z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <div class="mt-2 text-[11px] font-semibold text-emerald-600 flex items-center justify-center space-x-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                <span>Live Payment QR</span>
+                            </div>
+                        </div>
+
+                        <!-- Timer Expiration -->
+                        <div class="mt-4 flex items-center justify-center space-x-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 py-2 px-4 rounded-full max-w-xs mx-auto border border-amber-200 dark:border-amber-900">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                            <span>QR Code expires in: <strong id="qr-timer" class="font-mono">04:59</strong></span>
+                        </div>
+
+                        <div class="relative my-6">
+                            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-700"></div></div>
+                            <div class="relative flex justify-center text-xs uppercase"><span class="bg-white dark:bg-slate-800 px-3 text-slate-400">Or enter VPA / UPI ID</span></div>
+                        </div>
+
+                        <form onsubmit="event.preventDefault(); initiatePayment('UPI VPA');" class="max-w-md mx-auto space-y-3">
+                            <div class="flex space-x-2">
+                                <input type="text" id="upi-vpa-input" required placeholder="username@upi" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none text-sm">
+                                <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-semibold transition">Verify & Pay</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- TAB 3: NET BANKING PANEL -->
+                <div id="panel-netbanking" class="tab-panel hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm">
+                        <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Popular Banks</h3>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
+                            <button onclick="selectBank('HDFC Bank')" class="bank-btn p-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-500 dark:hover:border-brand-500 flex flex-col items-center justify-center space-y-1 transition hover:shadow-md">
+                                <i data-lucide="building" class="w-5 h-5 text-blue-600"></i>
+                                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">HDFC</span>
+                            </button>
+                            <button onclick="selectBank('SBI')" class="bank-btn p-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-500 dark:hover:border-brand-500 flex flex-col items-center justify-center space-y-1 transition hover:shadow-md">
+                                <i data-lucide="landmark" class="w-5 h-5 text-sky-500"></i>
+                                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">SBI</span>
+                            </button>
+                            <button onclick="selectBank('ICICI Bank')" class="bank-btn p-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-500 dark:hover:border-brand-500 flex flex-col items-center justify-center space-y-1 transition hover:shadow-md">
+                                <i data-lucide="building-2" class="w-5 h-5 text-orange-600"></i>
+                                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">ICICI</span>
+                            </button>
+                            <button onclick="selectBank('Axis Bank')" class="bank-btn p-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-brand-500 dark:hover:border-brand-500 flex flex-col items-center justify-center space-y-1 transition hover:shadow-md">
+                                <i data-lucide="vault" class="w-5 h-5 text-rose-700"></i>
+                                <span class="text-xs font-medium text-slate-700 dark:text-slate-300">Axis</span>
+                            </button>
+                        </div>
+
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase mb-1">Or Select Other Bank</label>
+                        <select id="bank-select" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-brand-500 outline-none text-sm transition">
+                            <option value="">-- Choose All Major Indian Banks --</option>
+                            <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                            <option value="Punjab National Bank">Punjab National Bank</option>
+                            <option value="Bank of Baroda">Bank of Baroda</option>
+                            <option value="Yes Bank">Yes Bank</option>
+                            <option value="IDFC FIRST Bank">IDFC FIRST Bank</option>
+                        </select>
+
+                        <button onclick="payWithSelectedBank()" class="w-full mt-4 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold shadow-lg transition">
+                            Proceed to Bank Gateway
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 4: WALLETS PANEL -->
+                <div id="panel-wallets" class="tab-panel hidden space-y-6">
+                    <div class="bg-white dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm space-y-3">
+                        <label class="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                            <div class="flex items-center space-x-3">
+                                <input type="radio" name="wallet" value="Amazon Pay" class="text-brand-600 focus:ring-brand-500" checked>
+                                <span class="font-medium text-sm">Amazon Pay</span>
+                            </div>
+                            <span class="text-xs text-slate-400">Instant Cashbacks</span>
+                        </label>
+                        <label class="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                            <div class="flex items-center space-x-3">
+                                <input type="radio" name="wallet" value="Mobikwik" class="text-brand-600 focus:ring-brand-500">
+                                <span class="font-medium text-sm">MobiKwik Wallet</span>
+                            </div>
+                            <span class="text-xs text-slate-400">Zip Pay Later</span>
+                        </label>
+                        <label class="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                            <div class="flex items-center space-x-3">
+                                <input type="radio" name="wallet" value="Airtel Money" class="text-brand-600 focus:ring-brand-500">
+                                <span class="font-medium text-sm">Airtel Payments Bank</span>
+                            </div>
+                            <span class="text-xs text-slate-400">Fast & Safe</span>
+                        </label>
+
+                        <button onclick="payWithWallet()" class="w-full mt-4 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold shadow-lg transition">
+                            Link & Pay with Wallet
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Dynamic Order Summary Sidebar (5 cols) -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white dark:bg-slate-800/90 rounded-2xl p-6 border border-slate-200 dark:border-slate-700/60 shadow-lg sticky top-24">
+                    <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100 pb-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <span>Order Summary</span>
+                        <span class="text-xs font-normal bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full text-slate-500">3 Items</span>
+                    </h2>
+
+                    <!-- Items List -->
+                    <div class="py-4 space-y-3 border-b border-slate-200 dark:border-slate-700/60 text-sm">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                                    <i data-lucide="box" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-700 dark:text-slate-200">Pro Developer Plan</p>
+                                    <p class="text-xs text-slate-400">Annual Billing</p>
+                                </div>
+                            </div>
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">$199.00</span>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+                                    <i data-lucide="cloud" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-700 dark:text-slate-200">Cloud Add-on</p>
+                                    <p class="text-xs text-slate-400">100 GB Storage</p>
+                                </div>
+                            </div>
+                            <span class="font-semibold text-slate-700 dark:text-slate-200">$29.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Promo Code Input -->
+                    <div class="py-4 border-b border-slate-200 dark:border-slate-700/60">
+                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-2">Have a Promo Code?</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="promo-input" uppercase placeholder="e.g. SAVE10" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none uppercase font-mono">
+                            <button type="button" onclick="applyPromoCode()" class="px-4 py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold transition">Apply</button>
+                        </div>
+                        <p id="promo-message" class="text-xs mt-1.5 hidden"></p>
+                    </div>
+
+                    <!-- Calculations Breakdown -->
+                    <div class="py-4 space-y-2 text-sm">
+                        <div class="flex justify-between text-slate-500">
+                            <span>Subtotal</span>
+                            <span id="summary-subtotal" class="font-medium text-slate-700 dark:text-slate-300">$228.00</span>
+                        </div>
+                        <div class="flex justify-between text-slate-500">
+                            <span>Tax (GST 18%)</span>
+                            <span id="summary-tax" class="font-medium text-slate-700 dark:text-slate-300">$21.99</span>
+                        </div>
+                        <div id="discount-row" class="flex justify-between text-emerald-600 font-medium hidden">
+                            <span>Discount</span>
+                            <span id="summary-discount">-$0.00</span>
+                        </div>
+                        <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center text-base font-bold text-slate-900 dark:text-white">
+                            <span>Total Due</span>
+                            <span id="summary-total" class="text-xl text-brand-600 dark:text-brand-400">$249.99</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800 text-center text-xs text-slate-500 flex items-center justify-center space-x-2">
+                        <i data-lucide="shield" class="w-4 h-4 text-emerald-500"></i>
+                        <span>30-Day Money-Back Guarantee Included</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- PROCESSING OVERLAY MODAL -->
+    <div id="processing-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center hidden p-4">
+        <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-8 shadow-2xl text-center space-y-6 border border-slate-200 dark:border-slate-700">
+            <div id="modal-spinner" class="relative w-20 h-20 mx-auto flex items-center justify-center">
+                <div class="w-20 h-20 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+                <i data-lucide="lock" class="w-8 h-8 text-brand-600 absolute"></i>
+            </div>
+            <div>
+                <h3 id="modal-title" class="text-lg font-bold text-slate-800 dark:text-slate-100">Processing Payment...</h3>
+                <p id="modal-subtext" class="text-xs text-slate-500 mt-1">Please do not refresh or close this window.</p>
+            </div>
+            
+            <!-- Progress Steps Indicator -->
+            <div class="space-y-2 text-left bg-slate-50 dark:bg-slate-900 p-4 rounded-xl text-xs font-medium">
+                <div id="step-1" class="flex items-center space-x-2 text-brand-600">
+                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                    <span>Verifying details...</span>
+                </div>
+                <div id="step-2" class="flex items-center space-x-2 text-slate-400">
+                    <i data-lucide="circle" class="w-4 h-4"></i>
+                    <span>Connecting with gateway...</span>
+                </div>
+                <div id="step-3" class="flex items-center space-x-2 text-slate-400">
+                    <i data-lucide="circle" class="w-4 h-4"></i>
+                    <span>Securing transaction...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUCCESS RECEIPT MODAL -->
+    <div id="receipt-modal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center hidden p-4 overflow-y-auto">
+        <div id="printable-receipt" class="bg-white dark:bg-slate-800 max-w-lg w-full rounded-2xl p-8 shadow-2xl space-y-6 border border-slate-200 dark:border-slate-700 relative">
+            
+            <div class="text-center space-y-2">
+                <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i data-lucide="check" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Payment Successful!</h2>
+                <p class="text-xs text-slate-400">Transaction ID: <span id="receipt-tx-id" class="font-mono text-slate-600 dark:text-slate-300">TXN-893201492</span></p>
+            </div>
+
+            <div class="border-y border-dashed border-slate-200 dark:border-slate-700 py-4 space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-slate-500">Payment Method:</span> <span id="receipt-method" class="font-semibold">Credit Card</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Date & Time:</span> <span id="receipt-date" class="font-medium">Oct 24, 2026, 14:32</span></div>
+                <div class="flex justify-between"><span class="text-slate-500">Amount Paid:</span> <span id="receipt-amount" class="font-bold text-emerald-600 dark:text-emerald-400 text-lg">$249.99</span></div>
+            </div>
+
+            <div class="no-print space-y-3">
+                <button onclick="window.print()" class="w-full py-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-semibold hover:opacity-90 transition flex items-center justify-center space-x-2">
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Download / Print Receipt</span>
+                </button>
+                <button onclick="resetCheckout()" class="w-full py-3 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    Done / Return to Store
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // State Management
+        let cartState = {
+            subtotal: 228.00,
+            tax: 21.99,
+            discount: 0.00,
+            total: 249.99
+        };
+
+        const PROMO_CODES = {
+            'SAVE10': 0.10, // 10% off
+            'WELCOME20': 20.00, // $20 off
+            'FREESHIP': 5.00
+        };
+
+        // DOM Elements
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const cardInner = document.getElementById('card-inner');
+        const cardNumInput = document.getElementById('card-num-input');
+        const cardNameInput = document.getElementById('card-name-input');
+        const cardExpInput = document.getElementById('card-exp-input');
+        const cardCvvInput = document.getElementById('card-cvv-input');
+
+        // Theme Toggle Functionality
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // Payment Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+            document.querySelectorAll('.payment-tab').forEach(tab => {
+                tab.classList.remove('bg-brand-600', 'text-white', 'shadow-md');
+                tab.classList.add('text-slate-600', 'dark:text-slate-400');
+            });
+
+            document.getElementById(`panel-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow-md');
+            activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
+        }
+
+        // 3D Card Interactive Logic
+        cardCvvInput.addEventListener('focus', () => cardInner.classList.add('flipped'));
+        cardCvvInput.addEventListener('blur', () => cardInner.classList.remove('flipped'));
+
+        cardNameInput.addEventListener('input', (e) => {
+            document.getElementById('card-holder-display').textContent = e.target.value.trim() || 'YOUR NAME';
+        });
+
+        cardCvvInput.addEventListener('input', (e) => {
+            document.getElementById('card-cvv-display').textContent = e.target.value || '•••';
+        });
+
+        // Format Card Expiry
+        cardExpInput.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/\D/g, '');
+            if (val.length >= 2) {
+                val = val.substring(0, 2) + '/' + val.substring(2, 4);
+            }
+            e.target.value = val;
+            document.getElementById('card-exp-display').textContent = val || 'MM/YY';
+        });
+
+        // Card Formatting & Luhn Algorithm Validation
+        cardNumInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/\D/g, '');
+            let formatted = value.replace(/(.{4})/g, '$1 ').trim();
+            e.target.value = formatted;
+
+            document.getElementById('card-num-display').textContent = formatted || '•••• •••• •••• ••••';
+
+            // Detect Card Brand
+            const brandLogo = document.getElementById('card-brand-logo');
+            if (value.startsWith('4')) {
+                brandLogo.innerHTML = '<i class="fa-brands fa-cc-visa text-blue-400 text-3xl"></i>';
+            } else if (/^5[1-5]/.test(value)) {
+                brandLogo.innerHTML = '<i class="fa-brands fa-cc-mastercard text-orange-400 text-3xl"></i>';
+            } else if (/^3[47]/.test(value)) {
+                brandLogo.innerHTML = '<i class="fa-brands fa-cc-amex text-sky-400 text-3xl"></i>';
+            } else if (/^6011/.test(value)) {
+                brandLogo.innerHTML = '<i class="fa-brands fa-cc-discover text-orange-500 text-3xl"></i>';
+            } else {
+                brandLogo.innerHTML = '<i class="fa-solid fa-credit-card"></i>';
+            }
+
+            // Realtime Luhn Check Validation Icon
+            const validationIcon = document.getElementById('card-validation-icon');
+            if (value.length >= 13) {
+                if (checkLuhn(value)) {
+                    validationIcon.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-emerald-500"></i>';
+                } else {
+                    validationIcon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>';
+                }
+                lucide.createIcons();
+            } else {
+                validationIcon.innerHTML = '';
+            }
+        });
+
+        function checkLuhn(cardNumber) {
+            let sum = 0;
+            let shouldDouble = false;
+            for (let i = cardNumber.length - 1; i >= 0; i--) {
+                let digit = parseInt(cardNumber.charAt(i));
+                if (shouldDouble) {
+                    if ((digit *= 2) > 9) digit -= 9;
+                }
+                sum += digit;
+                shouldDouble = !shouldDouble;
+            }
+            return (sum % 10) === 0;
+        }
+
+        // Promo Code Logic
+        function applyPromoCode() {
+            const input = document.getElementById('promo-input').value.trim().toUpperCase();
+            const msgEl = document.getElementById('promo-message');
+            
+            if (PROMO_CODES[input] !== undefined) {
+                let discountVal = PROMO_CODES[input];
+                if (discountVal < 1) {
+                    cartState.discount = cartState.subtotal * discountVal;
+                } else {
+                    cartState.discount = discountVal;
+                }
+                
+                msgEl.textContent = `Promo code applied successfully!`;
+                msgEl.className = 'text-xs mt-1.5 text-emerald-600 font-medium block';
+                updateTotals();
+            } else {
+                msgEl.textContent = 'Invalid promotional code.';
+                msgEl.className = 'text-xs mt-1.5 text-red-500 font-medium block';
+            }
+        }
+
+        function updateTotals() {
+            const total = Math.max(0, cartState.subtotal + cartState.tax - cartState.discount);
+            cartState.total = total;
+
+            document.getElementById('summary-discount').textContent = `-$${cartState.discount.toFixed(2)}`;
+            document.getElementById('discount-row').classList.toggle('hidden', cartState.discount === 0);
+            document.getElementById('summary-total').textContent = `$${total.toFixed(2)}`;
+            
+            document.querySelectorAll('.pay-amount-btn').forEach(btn => {
+                btn.textContent = `$${total.toFixed(2)}`;
+            });
+        }
+
+        // Payment Simulation Handlers
+        function initiatePayment(method) {
+            const modal = document.getElementById('processing-modal');
+            modal.classList.remove('hidden');
+
+            const step1 = document.getElementById('step-1');
+            const step2 = document.getElementById('step-2');
+            const step3 = document.getElementById('step-3');
+
+            setTimeout(() => {
+                step2.className = 'flex items-center space-x-2 text-brand-600';
+                step2.children[0].setAttribute('data-lucide', 'check-circle-2');
+                lucide.createIcons();
+            }, 1000);
+
+            setTimeout(() => {
+                step3.className = 'flex items-center space-x-2 text-brand-600';
+                step3.children[0].setAttribute('data-lucide', 'check-circle-2');
+                lucide.createIcons();
+            }, 2000);
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                showReceipt(method);
+            }, 3000);
+        }
+
+        function quickPay(provider) {
+            initiatePayment(provider);
+        }
+
+        function selectBank(bankName) {
+            initiatePayment(`Net Banking (${bankName})`);
+        }
+
+        function payWithSelectedBank() {
+            const bank = document.getElementById('bank-select').value;
+            if (!bank) return alert('Please choose a bank');
+            initiatePayment(`Net Banking (${bank})`);
+        }
+
+        function payWithWallet() {
+            const wallet = document.querySelector('input[name="wallet"]:checked').value;
+            initiatePayment(`Wallet (${wallet})`);
+        }
+
+        function showReceipt(method) {
+            document.getElementById('receipt-modal').classList.remove('hidden');
+            document.getElementById('receipt-method').textContent = method;
+            document.getElementById('receipt-amount').textContent = `$${cartState.total.toFixed(2)}`;
+            document.getElementById('receipt-tx-id').textContent = 'TXN-' + Math.floor(100000000 + Math.random() * 900000000);
+            document.getElementById('receipt-date').textContent = new Date().toLocaleString();
+
+            // Fire Confetti
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        function resetCheckout() {
+            document.getElementById('receipt-modal').classList.add('hidden');
+            window.location.reload();
+        }
+
+        // UPI QR Countdown Timer
+        let qrTime = 299;
+        const qrTimerEl = document.getElementById('qr-timer');
+        setInterval(() => {
+            if (qrTime <= 0) return;
+            const minutes = Math.floor(qrTime / 60);
+            const seconds = qrTime % 60;
+            qrTimerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            qrTime--;
+        }, 1000);
+    </script>
+</body>
+</html>
